@@ -8,12 +8,26 @@ export default async function handler(req, res) {
 
   const chatId = body.message?.chat?.id;
   const text = body.message?.text?.toLowerCase().trim();
+  const username = body.message?.from?.username || 'anonim';
+  const fullName = `${body.message?.from?.first_name || ''} ${body.message?.from?.last_name || ''}`.trim();
 
   if (!chatId || !text) {
-    return res.status(200).json({ status: 'no valid input' });
+    return res.status(200).json({ status: 'ignored' });
   }
 
-  // === Logika Balasan ===
+  // === Kirim log ke Google Sheets ===
+  await fetch('https://script.google.com/macros/s/AKfycbxJma_HN-qH-_21oGCkbA6Yfvf77wsTBuQ5ssGtoWoE93buMcBiBg1hDmYM47C6X6LF/exec', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      username,
+      full_name: fullName,
+      message: text
+    })
+  });
+
+  // === Jawaban spesifik ===
   if (text.includes('apa kabar')) {
     await sendText(token, chatId, "Aku baik, kamu gimana?");
     return res.status(200).json({ status: 'replied-kabar' });
@@ -33,7 +47,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: 'replied-silsilah' });
   }
 
-  // === Fallback ===
+  // === Fallback random ===
   const fallbackReplies = [
     "Oh begitu ya.",
     "Menarik! Ceritain lebih lanjut dong.",
@@ -45,7 +59,7 @@ export default async function handler(req, res) {
   return res.status(200).json({ status: 'replied-fallback' });
 }
 
-// Fungsi Kirim Pesan Biasa
+// Kirim teks biasa
 async function sendText(token, chatId, text) {
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
@@ -54,7 +68,7 @@ async function sendText(token, chatId, text) {
   });
 }
 
-// Fungsi Kirim Inline Button
+// Kirim tombol silsilah
 async function sendWithButton(token, chatId) {
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
